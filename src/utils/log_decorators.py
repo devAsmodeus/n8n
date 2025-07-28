@@ -16,7 +16,7 @@ class CustomFileHandler(logging.FileHandler):
 def save_request_info(function: Callable) -> Callable:
     @wraps(function)
     async def wrapper(*args, **kwargs) -> str:
-        file_path = 'logs/requests.log'
+        file_path = 'src/logs/requests.log'
         create_log_file(file_path)
         logger = get_logger(file_path)
         file_path = inspect.getfile(function)
@@ -35,7 +35,7 @@ def save_request_info(function: Callable) -> Callable:
 def save_database_info(function: Callable) -> Callable:
     @wraps(function)
     async def wrapper(*args, **kwargs) -> str:
-        file_path = 'logs/database.log'
+        file_path = 'src/logs/database.log'
         create_log_file(file_path)
         logger = get_logger(file_path)
         file_path = inspect.getfile(function)
@@ -58,7 +58,7 @@ def get_logger(log_file: str) -> logging.Logger:
             logger.removeHandler(handler)
             handler.close()
     logger.setLevel(logging.DEBUG)
-    project_path = Path(__file__).resolve().parent.parent
+    project_path = Path(__file__).resolve().parent.parent.parent
     file_handler = CustomFileHandler(os.path.join(project_path, log_file))
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
@@ -72,7 +72,7 @@ def get_logger(log_file: str) -> logging.Logger:
 
 
 def create_log_file(full_path: str) -> None:
-    dir_name, file_name = full_path.split('/')
+    dir_name, _, file_name = full_path.rpartition('/')
     project_path = Path(__file__).resolve()
     while not str(project_path).endswith('n8n'):
         project_path = project_path.parent

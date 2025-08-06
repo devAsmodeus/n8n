@@ -1,10 +1,10 @@
-import os
-
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from typing import Callable
+
+from src.config import settings
 
 
 class SecretKeyCheck(BaseHTTPMiddleware):
@@ -14,7 +14,7 @@ class SecretKeyCheck(BaseHTTPMiddleware):
             next_call: Callable
     ) -> JSONResponse:
         request_key = request.headers.get("X-Secret-Key")
-        if request_key != os.getenv("SECRET_KEY"):
+        if request_key != settings.SECRET_KEY:
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Access denied: invalid or missing secret key"}

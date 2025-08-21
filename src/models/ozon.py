@@ -18,6 +18,7 @@ class SearchMatchOrm(Base):
     product_url: Mapped[str] = mapped_column(Text)
     sku_id: Mapped[int] = mapped_column(BIGINT)
     concat_name: Mapped[str] = mapped_column(String(length=2000))
+    sorting_type: Mapped[str] = mapped_column(String(length=50))
     create_time: Mapped[datetime] = mapped_column(DateTime)
     update_time: Mapped[datetime] = mapped_column(DateTime)
 

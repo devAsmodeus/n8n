@@ -3,5 +3,5 @@
 /.idea
 
 # Внутренние ключи и логи проекта
-/.env
-/src/logs
+.env
+src/logs

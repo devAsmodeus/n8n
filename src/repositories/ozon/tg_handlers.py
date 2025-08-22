@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from src.repositories.ozon.parser import send_product_data
+from src.repositories.ozon.parser_products import send_product_data
 
 
 bot = Bot(token=settings.BOT_TOKEN)
@@ -33,8 +33,18 @@ async def search_items_handler(
     await message.delete()
     builder = InlineKeyboardBuilder()
     for sort_button, sort_callback in zip(
-            ('Популярные товары', 'Новинки', 'Товары дешевле', 'С высоким рейтингом'),
-            ('score', 'new', 'price', 'rating')
+            (
+                    'Популярные товары',
+                    'Новинки',
+                    'Товары дешевле',
+                    'С высоким рейтингом'
+            ),
+            (
+                    'score',
+                    'new',
+                    'price',
+                    'rating'
+            )
     ):
         builder.button(
             text=sort_button,

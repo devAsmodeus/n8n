@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from src.schemas import universal as scm_universal
-from src.repositories.ozon import parser
+from src.repositories.ozon import parser_products
 
 
 router = APIRouter(

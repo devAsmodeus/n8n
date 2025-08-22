@@ -4,7 +4,7 @@ import sys
 
 from aiogram import Dispatcher
 
-from handlers import bot, router
+from tg_handlers import bot, router
 
 
 async def main() -> None:

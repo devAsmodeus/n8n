@@ -20,7 +20,7 @@ async def get_items_search(
         'error': False, 'message': None, 'results': None
     })
     try:
-        response.results = await parser.get_product_data(product_url, sorting_type)
+        response.results = await parser_products.get_product_data_depr(product_url, sorting_type)
     except Exception as cpm_exception:
         response.error = True
         response.message = repr(cpm_exception)

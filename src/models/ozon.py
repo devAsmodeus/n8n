@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime, BIGINT, INT, ForeignKey, Text
+from sqlalchemy import String, DateTime, BIGINT, INT, ForeignKey, Text, Float
 from sqlalchemy.dialects.postgresql import UUID
 
 from datetime import datetime
@@ -40,6 +40,9 @@ class UrlProductsOrm(Base):
         primary_key=True
     )
     product_url: Mapped[str] = mapped_column(Text)
+    product_price: Mapped[int] = mapped_column(INT)
+    product_rating: Mapped[str] = mapped_column(String(length=50))
+    product_reviews: Mapped[str] = mapped_column(String(length=50))
 
 
 class ProductTopOrm(Base):

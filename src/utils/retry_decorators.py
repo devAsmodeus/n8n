@@ -5,22 +5,30 @@ from typing import Callable, Optional, Any
 
 
 class AuthenticationError(Exception):
-    """Use for 401 and 403 status codes"""
+    """
+    Исключение для кодов ответа 401/403 (проблемы аутентификации/доступа).
+    """
     pass
 
 
 class ManyRequestsError(Exception):
-    """Use for 429 status code"""
+    """
+    Исключение для кода ответа 429 (слишком много запросов).
+    """
     pass
 
 
 class BadRequestError(Exception):
-    """Use for 400 status code"""
+    """
+    Исключение для кода ответа 400 (некорректный запрос).
+    """
     pass
 
 
 class AnotherError(Exception):
-    """Use for another errors"""
+    """
+    Общее исключение для прочих ошибок.
+    """
     pass
 
 
@@ -28,6 +36,21 @@ def retry_process(
         attempts: int = 2,
         delay: int = 15
 ) -> Callable:
+    """
+    Повторяет вызов асинхронной функции при возникновении исключений.
+
+    Parameters
+    ----------
+    attempts : int
+        Количество попыток (по умолчанию 2).
+    delay : int
+        Задержка между попытками в секундах.
+
+    Returns
+    -------
+    Callable
+        Обернутая функция, повторяющая выполнение при ошибках.
+    """
     def decorator(function: Callable) -> Callable:
         @wraps(function)
         async def wrapper(*args, **kwargs) -> Optional[Any]:
@@ -55,6 +78,34 @@ def retry_request(
         attempts: int = 5,
         delay: int | float = 15
 ) -> Callable:
+    """
+    Ретраи HTTP-запросов с обработкой статусов и возвратом значения по умолчанию.
+
+    Parameters
+    ----------
+    default_value : Any
+        Значение, возвращаемое при исчерпании попыток.
+    raise_error : bool
+        Если True — возбуждать исключение при неуспехе.
+    return_bytes : bool
+        Зарезервировано для режимов, где требуется вернуть bytes.
+    attempts : int
+        Кол-во попыток (по умолчанию 5).
+    delay : int | float
+        Задержка между попытками, сек.
+
+    Returns
+    -------
+    Callable
+        Декоратор для асинхронной функции запроса.
+
+    Notes
+    -----
+    - 200/202/204 считаются успешными.
+    - 401/403 -> AuthenticationError.
+    - 429 при raise_error=True -> ManyRequestsError.
+    - Иначе — повторы до исчерпания.
+    """
     def decorator(function: Callable) -> Callable:
         @wraps(function)
         async def wrapper(*args, **kwargs) -> Any:

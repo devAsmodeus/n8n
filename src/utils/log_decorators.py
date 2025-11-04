@@ -14,6 +14,19 @@ class CustomFileHandler(logging.FileHandler):
 
 
 def save_request_info(function: Callable) -> Callable:
+    """
+    Декоратор логирования HTTP-запросов: пишет статус и URL в файл логов.
+
+    Parameters
+    ----------
+    function : Callable
+        Целевая асинхронная функция, выполняющая HTTP-запрос и возвращающая (url, status, text).
+
+    Returns
+    -------
+    Callable
+        Обернутая функция, которая в случае успеха пишет DEBUG-лог, а при исключении — ERROR.
+    """
     @wraps(function)
     async def wrapper(*args, **kwargs) -> str:
         file_path = 'src/logs/requests.log'
@@ -33,6 +46,19 @@ def save_request_info(function: Callable) -> Callable:
 
 
 def save_database_info(function: Callable) -> Callable:
+    """
+    Декоратор логирования операций с БД.
+
+    Parameters
+    ----------
+    function : Callable
+        Асинхронная функция работы с БД.
+
+    Returns
+    -------
+    Callable
+        Обернутая функция с логированием успеха/ошибок.
+    """
     @wraps(function)
     async def wrapper(*args, **kwargs) -> str:
         file_path = 'src/logs/database.log'
@@ -52,6 +78,19 @@ def save_database_info(function: Callable) -> Callable:
 
 
 def get_logger(log_file: str) -> logging.Logger:
+    """
+    Создает/возвращает настроенный `logging.Logger` с файловым хендлером.
+
+    Parameters
+    ----------
+    log_file : str
+        Путь до файла логов относительно корня проекта.
+
+    Returns
+    -------
+    logging.Logger
+        Инициализированный логгер с уровнем DEBUG.
+    """
     logger = logging.getLogger(__name__)
     if logger.hasHandlers():
         for handler in logger.handlers[:]:
@@ -72,6 +111,14 @@ def get_logger(log_file: str) -> logging.Logger:
 
 
 def create_log_file(full_path: str) -> None:
+    """
+    Гарантирует существование каталога и файла логов.
+
+    Parameters
+    ----------
+    full_path : str
+        Относительный путь вида `src/logs/<file>.log`.
+    """
     dir_name, _, file_name = full_path.rpartition('/')
     project_path = Path(__file__).resolve()
     while not str(project_path).endswith('n8n'):

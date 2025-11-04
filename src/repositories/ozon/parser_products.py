@@ -16,6 +16,20 @@ from src.repositories.ozon.requests import (
 async def get_product_name(
         product_url: str,
 ) -> tuple[str, int]:
+    """
+    Извлекает читаемое имя товара и SKU по ссылке на карточку Ozon.
+
+    Parameters
+    ----------
+    product_url : str
+        Ссылка на карточку товара `https://www.ozon.ru/...` или близкая форма.
+
+    Returns
+    -------
+    tuple[str, int]
+        Пара (наименование, sku_id). Если имя не распознано, возвращает
+        ("Наименование не распознано", 0).
+    """
     headers, connector = await get_headers(), aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
         product_name, sku_id = await format_product_name(session, product_url)
@@ -29,6 +43,21 @@ async def format_product_name(
         session: aiohttp.ClientSession,
         product_url: str,
 ) -> tuple[Optional[str], int]:
+    """
+    Внутренний метод для получения имени и SKU через виджеты `widgetStates`.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    product_url : str
+        URL карточки товара.
+
+    Returns
+    -------
+    tuple[Optional[str], int]
+        Имя товара и SKU. Если не удалось распознать — (None, 0).
+    """
     prefix, product_name, sku_id = None, None, int()
     pattern = r'https://(?:www.)?ozon.ru(/(?:product|t)/[a-zA-Z\d-]+/?)'
     if match := re.search(pattern=pattern, string=product_url):
@@ -58,6 +87,25 @@ async def get_product_data(
         product_name: str,
         sorting_type: str,
 ) -> dict[str, Any]:
+    """
+    Формирует агрегированные данные выдачи по имени товара.
+
+    Parameters
+    ----------
+    product_name : str
+        Имя товара (по которому выполняется поиск).
+    sorting_type : str
+        Тип сортировки (`score`, `new`, `price`, `rating`).
+
+    Returns
+    -------
+    dict[str, Any]
+        Агрегированные данные: карточки, цены, топ-товар, описание, характеристики.
+
+    Notes
+    -----
+    Может возвращать кеш из БД, если включено и запись актуальна.
+    """
     # exists_flag, unique_id = await check_exists(product_name, sorting_type)
     exists_flag, unique_id = True, None
     if exists_flag:
@@ -79,6 +127,23 @@ async def get_products(
         product_name: str,
         sorting_type: str,
 ) -> dict:
+    """
+    Получает и парсит страницу поиска, извлекает список товаров и фильтры.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    product_name : str
+        Текст запроса поиска.
+    sorting_type : str
+        Тип сортировки (`score`, `new`, `price`, `rating`).
+
+    Returns
+    -------
+    dict
+        Объект с ключами `products`, `product_top`, `filters` (если найдены).
+    """
     result = dict()
     if sorting_type in ("new", "price", "rating"):
         params = {'text': product_name, 'from_global': 'true', 'sorting': sorting_type}
@@ -103,6 +168,21 @@ async def get_page_data(
         session: aiohttp.ClientSession,
         params: dict[str, str],
 ) -> BeautifulSoup:
+    """
+    Загружает HTML выдачи поиска Ozon и возвращает `BeautifulSoup`-дерево.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    params : dict[str, str]
+        Параметры поиска (например, text, sorting).
+
+    Returns
+    -------
+    BeautifulSoup
+        Объект дерева HTML для дальнейшего извлечения блоков.
+    """
     page_data = await parse_search(session, params)
     if search_match := re.search(pattern=r'location\.replace\(\"(.*?)\"\)', string=page_data):
         search_url = json.loads(f'"{search_match.group(1)}"')
@@ -114,6 +194,22 @@ async def format_products(
         session: aiohttp.ClientSession,
         products: dict[str, Any],
 ) -> dict:
+    """
+    Преобразует данные виджетов в единый агрегированный результат.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    products : dict[str, Any]
+        Данные, полученные из страницы поиска (список товаров и фильтры).
+
+    Returns
+    -------
+    dict
+        Структура с `products_data`, `currency_prices`, `product_name`,
+        `product_image`, `description`, `characteristics`.
+    """
     products_data = list() # Ссылки на товары, цены, рейтинг и количество отзывов
     currency_prices = dict() # Схема с минимальной и максимальной ценой (средняя цена)
     product_name = None # Наименование самого популярного товара
@@ -140,6 +236,19 @@ async def format_products(
 async def get_product_rating(
         product: dict[str, Any],
 ) -> dict[str, Any]:
+    """
+    Извлекает из состояния карточки товара (tile) имя, цену, рейтинг, отзывы и URL.
+
+    Parameters
+    ----------
+    product : dict[str, Any]
+        Объект товара из списка `mainState`.
+
+    Returns
+    -------
+    dict[str, Any]
+        Объект с полями `url`, `name`, `price`, `rating`, `reviews`.
+    """
     product_url = 'https://www.ozon.ru' + product.get('action', dict()).get('link')
     result = dict()
     for state in product.get('mainState', list()):
@@ -170,6 +279,23 @@ async def format_str_to_int(
         format_type: Callable,
         default_value: str = 'Нет'
 ) -> float | int | None | str:
+    """
+    Приводит строку к числу (int/float), очищая от лишних символов.
+
+    Parameters
+    ----------
+    value : str
+        Исходное строковое значение (например, "1 990 ₽" или "4.7").
+    format_type : Callable
+        Тип для преобразования: `int` или `float`.
+    default_value : str
+        Значение по умолчанию, если `value` пусто.
+
+    Returns
+    -------
+    float | int | None | str
+        Преобразованное значение или `default_value`.
+    """
     if value:
         if format_type is int:
             value = ''.join(char for char in str(value) if char.isdigit())
@@ -185,6 +311,21 @@ async def get_product_top_data(
         session: aiohttp.ClientSession,
         products: dict[str, Any],
 ) -> tuple | tuple[None, str | None, str | Any, dict[Any, Any]]:
+    """
+    Извлекает данные топ-товара: главное изображение, имя, описание, характеристики.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    products : dict[str, Any]
+        Данные результатов поиска, содержащие `product_top`.
+
+    Returns
+    -------
+    tuple
+        `(product_name, product_image, description, characteristics)`.
+    """
     product_name = None
     product_image = None
     description = str()
@@ -223,6 +364,19 @@ async def get_product_top_data(
 async def get_characteristics(
         data: dict[str, Any]
 ) -> dict:
+    """
+    Преобразует блок характеристик виджета в словарь: название -> список значений.
+
+    Parameters
+    ----------
+    data : dict[str, Any]
+        JSON-объект виджета характеристик.
+
+    Returns
+    -------
+    dict
+        Словарь с названием характеристики и списком значений.
+    """
     result = defaultdict(list)
     for part_data in data.get('characteristics', list()):
         for _, characteristics in part_data.items():
@@ -239,6 +393,19 @@ async def get_characteristics(
 async def get_main_image(
         product: dict[str, Any]
 ) -> Optional[str]:
+    """
+    Возвращает ссылку на главное изображение товара, если доступно.
+
+    Parameters
+    ----------
+    product : dict[str, Any]
+        Объект товара из списка `product_top`.
+
+    Returns
+    -------
+    Optional[str]
+        URL изображения или None, если не найдено.
+    """
     for item in product.get('tileImage', dict()).get('items', list()):
         return item.get('image', dict()).get('link')
     else:
@@ -248,6 +415,19 @@ async def get_main_image(
 async def get_currency_prices(
         products: dict[str, Any],
 ) -> dict[str, Any]:
+    """
+    Извлекает из фильтров минимальную/максимальную цену и считает среднюю.
+
+    Parameters
+    ----------
+    products : dict[str, Any]
+        Данные результатов поиска, содержащие `filters`.
+
+    Returns
+    -------
+    dict[str, Any]
+        `{"min_price": float, "max_price": float, "avg_price": float}`.
+    """
     result = dict()
     for section in products.get('filters', dict()).get('sections', list()):
         for filter_ in section.get('filters', list()):
@@ -261,6 +441,18 @@ async def get_currency_prices(
 
 
 async def get_headers() -> dict[str, str]:
+    """
+    Возвращает набор заголовков/куки для запросов к Ozon.
+
+    Returns
+    -------
+    dict[str, str]
+        Заголовки запроса. Значения могут требовать периодического обновления.
+
+    Notes
+    -----
+    Содержит реальные cookie — при необходимости замените на актуальные или вынесите в конфиг.
+    """
     return {
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "accept-encoding": "gzip, deflate, br, zstd",

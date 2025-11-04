@@ -9,6 +9,25 @@ async def parse_details(
         session: aiohttp.ClientSession,
         sku: str
 ) -> tuple[str, int, str]:
+    """
+    Запрашивает подробную карточку товара (детали, описание, характеристики).
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия для выполнения запроса.
+    sku : str
+        SKU товара на Ozon.
+
+    Returns
+    -------
+    tuple[str, int, str]
+        Кортеж: (итоговый URL, HTTP-статус, тело ответа).
+
+    Notes
+    -----
+    - Декорировано логированием и ретраями. В случае ошибок повторит запрос.
+    """
     async with session.get(
             url=(
                     f'https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url='
@@ -25,6 +44,21 @@ async def parse_search(
         session: aiohttp.ClientSession,
         params: dict
 ) -> tuple[str, int, str]:
+    """
+    Выполняет запрос страницы поиска Ozon с заданными параметрами.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    params : dict
+        Параметры запроса (например, text, sorting и т.д.).
+
+    Returns
+    -------
+    tuple[str, int, str]
+        Кортеж: (итоговый URL, HTTP-статус, тело ответа).
+    """
     async with session.get(
             url=f'https://www.ozon.ru/search/',
             params=params,
@@ -39,6 +73,21 @@ async def parse_product(
         session: aiohttp.ClientSession,
         url: str
 ) -> tuple[str, int, str]:
+    """
+    Выполняет GET-запрос по произвольному URL товара/страницы.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        Активная HTTP-сессия.
+    url : str
+        Абсолютный URL, который необходимо получить.
+
+    Returns
+    -------
+    tuple[str, int, str]
+        Кортеж: (итоговый URL, HTTP-статус, тело ответа).
+    """
     async with session.get(
             url=url,
             timeout=aiohttp.ClientTimeout(total=25)

@@ -18,6 +18,27 @@ async def get_product_data_depr(
         product_url: str,
         sorting_type: str
 ) -> dict[str, Any]:
+    """
+    Устаревший интегрированный конвейер: парсинг -> сохранение -> возврат.
+
+    Parameters
+    ----------
+    product_url : str
+        Ссылка на карточку товара Ozon.
+    sorting_type : str
+        Тип сортировки поиска (score/new/price/rating).
+
+    Returns
+    -------
+    dict[str, Any]
+        Структурированный результат для ответа API.
+
+    Notes
+    -----
+    - Проверяет наличие кэша в БД (`check_exists`).
+    - При необходимости парсит и сохраняет (`upload_products`).
+    - В противном случае читает из БД (`get_database_info`).
+    """
     headers, connector = await get_headers(), aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
         product_name, sku_id = await format_product_name(session, product_url)
@@ -47,6 +68,21 @@ async def get_database_info(
         unique_id: uuid.UUID,
         sorting_type: str
 ) -> dict[str, Any]:
+    """
+    Возвращает ранее сохраненные в БД результаты по уникальному ключу запроса.
+
+    Parameters
+    ----------
+    unique_id : uuid.UUID
+        Идентификатор выгрузки.
+    sorting_type : str
+        Тип сортировки, для которой нужно вернуть список URL и метаданные.
+
+    Returns
+    -------
+    dict[str, Any]
+        Объект с полями `details` (products, currency_price, main_image, description, characteristics).
+    """
     result = dict(
         sorting_type=sorting_type,
         message="Выгрузка с базы данных",
@@ -92,6 +128,25 @@ async def upload_products(
         sku_id: int,
         products: dict[str, Any]
 ) -> dict[str, Any]:
+    """
+    Сохраняет результаты парсинга в связанные таблицы PostgreSQL.
+
+    Parameters
+    ----------
+    product_url : str
+        Исходная ссылка на товар.
+    product_name : str
+        Имя (конкатенация) товара для поиска/кэширования.
+    sku_id : int
+        SKU товара.
+    products : dict[str, Any]
+        Агрегированные данные (`details`, `sorting_type`, и т.д.).
+
+    Returns
+    -------
+    dict[str, Any]
+        Изначально переданные данные `products` (для дальнейшего ответа).
+    """
     match_values = {
         "unique_id": (new_uuid := uuid.uuid4()),
         "product_url": product_url,
@@ -157,6 +212,22 @@ async def check_exists(
         product_name: str,
         sorting_type: str
 ) -> tuple[bool, uuid.UUID | None]:
+    """
+    Проверяет наличие актуальной записи в БД для пары (product_name, sorting_type).
+
+    Parameters
+    ----------
+    product_name : str
+        Имя товара для поиска.
+    sorting_type : str
+        Тип сортировки выдачи.
+
+    Returns
+    -------
+    tuple[bool, uuid.UUID | None]
+        `(need_parse, unique_id)` — если данные актуальны (<=7 дней),
+        возвращает `(False, unique_id)`; если требуется перепарсинг — `(True, None)`.
+    """
     async with async_session_maker() as db_session:
         query = select(SearchMatchOrm)
         matches = await db_session.execute(query)

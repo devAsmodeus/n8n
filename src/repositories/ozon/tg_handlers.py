@@ -19,6 +19,16 @@ router = Router()
 
 
 class AwaitMessage(StatesGroup):
+    """
+    Состояния конечного автомата для диалога поиска товаров и обратной связи.
+
+    Notes
+    -----
+    - message_state: ожидание ссылки на товар.
+    - sort_state: ожидание выбора типа сортировки.
+    - stars_state: ожидание оценки (1..5).
+    - comment_state: ожидание текстового комментария.
+    """
     message_state = State()
     sort_state = State()
     stars_state = State()
@@ -31,6 +41,14 @@ class AwaitMessage(StatesGroup):
 async def first_run_handler(
         message: Message
 ) -> None:
+    """
+    Обрабатывает команду /start: очищает сообщение и отправляет приветственный текст.
+
+    Parameters
+    ----------
+    message : Message
+        Входящее сообщение пользователя.
+    """
     await message.delete()
     await message.answer(
         text=start_message
@@ -44,6 +62,16 @@ async def search_items_handler(
         message: Message,
         state: FSMContext
 ) -> None:
+    """
+    Стартует сценарий поиска товаров: предлагает ввести ссылку.
+
+    Parameters
+    ----------
+    message : Message
+        Команда /searchitems.
+    state : FSMContext
+        Контекст FSM для хранения промежуточных данных.
+    """
     await state.clear()
     await message.delete()
     await message.answer(
@@ -63,6 +91,16 @@ async def coefficient_chosen(
         message: Message,
         state: FSMContext
 ):
+    """
+    Принимает ссылку на товар, извлекает имя и SKU, предлагает выбрать сортировку.
+
+    Parameters
+    ----------
+    message : Message
+        Сообщение со ссылкой.
+    state : FSMContext
+        Контекст FSM.
+    """
     await state.clear()
     product_url = message.text.strip()
     product_name, sku_id = await get_product_name(product_url)
@@ -100,6 +138,16 @@ async def timeout_handler(
         user_id: int,
         state: FSMContext,
 ):
+    """
+    Таймаут ожидания выбора сортировки (5 минут). Если не выбран — показывает результаты по цене.
+
+    Parameters
+    ----------
+    user_id : int
+        Идентификатор пользователя Telegram.
+    state : FSMContext
+        Контекст FSM.
+    """
     await asyncio.sleep(60 * 5)  # 5 минут
     current_state = await state.get_state()
     if current_state == AwaitMessage.sort_state.state:
@@ -133,6 +181,16 @@ async def sort_type_handler(
         callback: CallbackQuery,
         state: FSMContext
 ) -> None:
+    """
+    Обрабатывает выбор типа сортировки, выполняет поиск и отправляет результат.
+
+    Parameters
+    ----------
+    callback : CallbackQuery
+        Callback с данными вида `sort_<type>`.
+    state : FSMContext
+        Контекст FSM.
+    """
     data = await state.get_data()
     product_url = data.get("product_url")
     product_name = data.get("product_name")
@@ -165,6 +223,16 @@ async def timeout_stars_handler(
         user_id: int,
         state: FSMContext,
 ):
+    """
+    Таймаут ожидания оценки (5 минут). Если пользователь не поставил оценку — запрашивает её.
+
+    Parameters
+    ----------
+    user_id : int
+        Идентификатор пользователя Telegram.
+    state : FSMContext
+        Контекст FSM.
+    """
     await asyncio.sleep(60 * 5)  # 5 минут
     current_state = await state.get_state()
     if current_state == AwaitMessage.stars_state.state:
@@ -191,6 +259,16 @@ async def stars_handler(
         callback: CallbackQuery,
         state: FSMContext,
 ) -> None:
+    """
+    Обрабатывает выбор количества звезд и переводит в состояние комментария.
+
+    Parameters
+    ----------
+    callback : CallbackQuery
+        Callback вида `star_<N>`.
+    state : FSMContext
+        Контекст FSM.
+    """
     *_, stars = callback.data.partition("_")
     await callback.message.answer(
         text=thanks_message
@@ -211,6 +289,16 @@ async def comment_handler(
         message: Message,
         state: FSMContext
 ):
+    """
+    Принимает произвольный текстовый комментарий и завершает сценарий.
+
+    Parameters
+    ----------
+    message : Message
+        Сообщение пользователя (не команда и не ссылка).
+    state : FSMContext
+        Контекст FSM.
+    """
     await state.clear()
     await message.answer(
         text=commit_message,

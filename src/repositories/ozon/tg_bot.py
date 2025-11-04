@@ -8,6 +8,14 @@ from tg_handlers import bot, router
 
 
 async def main() -> None:
+    """
+    Точка входа Telegram-бота (Aiogram): конфигурирует диспетчер и запускает polling.
+
+    Notes
+    -----
+    - Использует `router` из `tg_handlers.py`.
+    - Корректно закрывает сессию бота в блоке `finally`.
+    """
     dp = Dispatcher()
     dp.include_routers(router)
     try:

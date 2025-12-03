@@ -34,7 +34,7 @@ async def get_items_search(
     Notes
     -----
     - Внутри вызывает бизнес-логику парсинга/кэширования для получения агрегированных данных.
-    - Формат `results` см. в документации (Readme.md).
+    - Формат `results` см. в документации (README.md).
     """
     response = scm_universal.ResultResponse(**{
         'error': False, 'message': None, 'results': None
